@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS idempotency_key (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  value TEXT NOT NULL UNIQUE,
+  request_hash TEXT NOT NULL
+);

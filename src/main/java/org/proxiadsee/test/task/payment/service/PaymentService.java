@@ -8,8 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.proxiadsee.test.task.payment.dto.GetPaymentRequestDTO;
 import org.proxiadsee.test.task.payment.dto.RequestPaymentRequestDTO;
 import org.proxiadsee.test.task.payment.entity.IdempotencyKeyEntity;
+import org.proxiadsee.test.task.payment.entity.PaymentEntity;
 import org.proxiadsee.test.task.payment.mapper.PaymentMapper;
 import org.proxiadsee.test.task.payment.storage.IdempotencyKeyRepository;
+import org.proxiadsee.test.task.payment.storage.PaymentRepository;
 import org.proxiadsee.test.task.payment.validation.DtoValidator;
 import org.springframework.stereotype.Component;
 import payments.v1.Payment.GetPaymentRequest;
@@ -31,6 +33,7 @@ public class PaymentService extends PaymentServiceImplBase {
   private final DtoValidator dtoValidator;
   private final IdempotencyKeyRepository idempotencyKeyRepository;
   private final ProcessPaymentService processPaymentService;
+  private final PaymentRepository paymentRepository;
 
   @Override
   public void requestPayment(
@@ -72,7 +75,15 @@ public class PaymentService extends PaymentServiceImplBase {
 
     log.debug("Validated DTO: {}", dto);
 
-    responseObserver.onNext(GetPaymentResponse.newBuilder().build());
+    Long id = Long.parseLong(dto.paymentId());
+    Optional<PaymentEntity> entityOpt = paymentRepository.findById(id);
+
+    if (entityOpt.isEmpty()) {
+      responseObserver.onNext(GetPaymentResponse.newBuilder().build());
+    } else {
+      GetPaymentResponse response = paymentMapper.toGetPaymentResponse(entityOpt.get());
+      responseObserver.onNext(response);
+    }
     responseObserver.onCompleted();
   }
 

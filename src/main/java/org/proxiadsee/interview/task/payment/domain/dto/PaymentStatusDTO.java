@@ -1,4 +1,4 @@
-package org.proxiadsee.interview.task.payment.dto;
+package org.proxiadsee.interview.task.payment.domain.dto;
 
 import payments.v1.Payment.PaymentStatus;
 

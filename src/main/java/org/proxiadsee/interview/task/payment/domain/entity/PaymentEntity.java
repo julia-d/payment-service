@@ -1,4 +1,4 @@
-package org.proxiadsee.interview.task.payment.entity;
+package org.proxiadsee.interview.task.payment.domain.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,6 +1,7 @@
 package org.proxiadsee.test.task.payment.service;
 
 import io.grpc.stub.StreamObserver;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +54,7 @@ public class PaymentService extends PaymentServiceImplBase {
       IdempotencyKeyEntity newEntity = new IdempotencyKeyEntity();
       newEntity.setValue(dto.idempotencyKey());
       newEntity.setRequestHash(String.valueOf(dto.hashCode()));
+      newEntity.setCreatedAt(LocalDateTime.now());
       response = processPaymentService.processNewPayment(dto, newEntity);
     }
 

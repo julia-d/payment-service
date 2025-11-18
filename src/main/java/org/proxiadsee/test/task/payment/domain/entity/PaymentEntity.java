@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -14,22 +16,39 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 @Entity
-@Table(name = "idempotency_key")
+@Table(name = "payment")
 @Getter
 @Setter
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class IdempotencyKeyEntity {
+public class PaymentEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false, unique = true)
-  private String value;
+  @OneToOne
+  @JoinColumn(name = "idempotency_id", nullable = false, unique = true)
+  private IdempotencyKeyEntity idempotencyKey;
 
-  @Column(name = "request_hash", nullable = false)
-  private String requestHash;
+  @Column(name = "gateway_payment_id", nullable = false, unique = true)
+  private String gatewayPaymentId;
+
+  @Column(name = "amount_minor", nullable = false)
+  private Long amountMinor;
+
+  @Column(nullable = false)
+  private String currency;
+
+  @Column(nullable = false)
+  private String status;
+
+  @Column(name = "order_id", nullable = false)
+  private String orderId;
 
   @Column(name = "created_at", nullable = false)
   private LocalDateTime createdAt;
+
+  @Column private String metadata;
+
+  @Column private String message;
 }

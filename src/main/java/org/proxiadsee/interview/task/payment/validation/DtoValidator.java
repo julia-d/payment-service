@@ -1,4 +1,4 @@
-package org.proxiadsee.test.task.payment.validation;
+package org.proxiadsee.interview.task.payment.validation;
 
 import io.grpc.Status;
 import jakarta.validation.ConstraintViolation;

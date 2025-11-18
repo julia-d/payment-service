@@ -1,4 +1,4 @@
-package org.proxiadsee.test.task.payment.dto;
+package org.proxiadsee.interview.task.payment.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

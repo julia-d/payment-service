@@ -1,4 +1,4 @@
-package org.proxiadsee.test.task.payment.validation;
+package org.proxiadsee.interview.task.payment.validation;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.proxiadsee.test.task.payment.dto.GetPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.dto.GetPaymentRequestDTO;
 
 @DisplayName("DtoValidator - GetPaymentRequestDTO Tests")
 class DtoValidatorGetPaymentTest {
@@ -24,7 +24,7 @@ class DtoValidatorGetPaymentTest {
   @BeforeEach
   void setUp() {
     validator = Validation.buildDefaultValidatorFactory().getValidator();
-    dtoValidator = new org.proxiadsee.test.task.payment.validation.DtoValidator(validator);
+    dtoValidator = new DtoValidator(validator);
   }
 
   @ParameterizedTest(name = "[{index}] {0}")

@@ -1,18 +1,18 @@
-package org.proxiadsee.test.task.payment.service;
+package org.proxiadsee.interview.task.payment.service;
 
 import io.grpc.stub.StreamObserver;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.proxiadsee.test.task.payment.dto.GetPaymentRequestDTO;
-import org.proxiadsee.test.task.payment.dto.RequestPaymentRequestDTO;
-import org.proxiadsee.test.task.payment.entity.IdempotencyKeyEntity;
-import org.proxiadsee.test.task.payment.entity.PaymentEntity;
-import org.proxiadsee.test.task.payment.mapper.PaymentMapper;
-import org.proxiadsee.test.task.payment.storage.IdempotencyKeyRepository;
-import org.proxiadsee.test.task.payment.storage.PaymentRepository;
-import org.proxiadsee.test.task.payment.validation.DtoValidator;
+import org.proxiadsee.interview.task.payment.dto.GetPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.dto.RequestPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.entity.IdempotencyKeyEntity;
+import org.proxiadsee.interview.task.payment.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.mapper.PaymentMapper;
+import org.proxiadsee.interview.task.payment.storage.IdempotencyKeyRepository;
+import org.proxiadsee.interview.task.payment.storage.PaymentRepository;
+import org.proxiadsee.interview.task.payment.validation.DtoValidator;
 import org.springframework.stereotype.Component;
 import payments.v1.Payment.GetPaymentRequest;
 import payments.v1.Payment.GetPaymentResponse;

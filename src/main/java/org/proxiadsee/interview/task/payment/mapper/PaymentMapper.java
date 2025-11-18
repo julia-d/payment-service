@@ -1,14 +1,14 @@
-package org.proxiadsee.test.task.payment.mapper;
+package org.proxiadsee.interview.task.payment.mapper;
 
 import com.google.protobuf.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.proxiadsee.test.task.payment.dto.GetPaymentRequestDTO;
-import org.proxiadsee.test.task.payment.dto.RequestPaymentRequestDTO;
-import org.proxiadsee.test.task.payment.entity.IdempotencyKeyEntity;
-import org.proxiadsee.test.task.payment.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.dto.GetPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.dto.RequestPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.entity.IdempotencyKeyEntity;
+import org.proxiadsee.interview.task.payment.entity.PaymentEntity;
 import payments.v1.Payment.GetPaymentRequest;
 import payments.v1.Payment.GetPaymentResponse;
 import payments.v1.Payment.PaymentStatus;

@@ -1,4 +1,4 @@
-package domain.dto;
+package org.proxiadsee.interview.task.payment.dto;
 
 import payments.v1.Payment.PaymentStatus;
 
@@ -27,4 +27,3 @@ public enum PaymentStatusDTO {
     return PAYMENT_STATUS_UNSPECIFIED;
   }
 }
-

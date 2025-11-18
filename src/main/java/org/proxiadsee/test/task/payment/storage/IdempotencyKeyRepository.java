@@ -1,7 +1,7 @@
-package storage;
+package org.proxiadsee.test.task.payment.storage;
 
 import java.util.Optional;
-import org.proxiadsee.test.task.domain.entity.IdempotencyKeyEntity;
+import org.proxiadsee.test.task.payment.entity.IdempotencyKeyEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

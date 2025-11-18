@@ -3,7 +3,8 @@ package org.proxiadsee.test.task.payment.service;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.proxiadsee.test.task.payment.dto.RequestPaymentRequestDTO;
+import org.proxiadsee.test.task.payment.domain.dto.GatewayPaymentDTO;
+import org.proxiadsee.test.task.payment.domain.dto.RequestPaymentRequestDTO;
 import org.proxiadsee.test.task.payment.entity.IdempotencyKeyEntity;
 import org.proxiadsee.test.task.payment.entity.PaymentEntity;
 import org.proxiadsee.test.task.payment.mapper.PaymentMapper;
@@ -18,14 +19,24 @@ public class ProcessPaymentService {
 
   private final PaymentRepository paymentRepository;
   private final PaymentMapper paymentMapper;
+  private final PaymentGatewayService paymentGatewayService;
 
   public RequestPaymentResponse processNewPayment(
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity) {
     log.info("Processing new payment for idempotency key: {}", dto.idempotencyKey());
-    return RequestPaymentResponse.newBuilder()
-        .setPaymentId("")
-        .setIdempotencyKey(dto.idempotencyKey())
-        .build();
+
+    PaymentEntity paymentEntity = paymentMapper.toPaymentEntity(dto, idempotencyKeyEntity);
+    PaymentEntity savedEntity = paymentRepository.save(paymentEntity);
+
+    GatewayPaymentDTO gatewayResponse = paymentGatewayService.processPayment(dto);
+
+    savedEntity.setGatewayPaymentId(gatewayResponse.id());
+    savedEntity.setStatus(gatewayResponse.status().name());
+    savedEntity.setMessage(gatewayResponse.message());
+
+    PaymentEntity updatedEntity = paymentRepository.save(savedEntity);
+
+    return paymentMapper.toRequestPaymentResponse(updatedEntity);
   }
 
   public RequestPaymentResponse processExistingPayment(

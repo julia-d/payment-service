@@ -64,6 +64,19 @@ public interface PaymentMapper {
   RequestPaymentResponse toRequestPaymentResponse(
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity);
 
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "idempotencyKey", source = "idempotencyKeyEntity")
+  @Mapping(target = "gatewayPaymentId", ignore = true)
+  @Mapping(target = "amountMinor", source = "dto.amountMinor")
+  @Mapping(target = "currency", source = "dto.currency")
+  @Mapping(target = "status", constant = "PAYMENT_STATUS_PENDING")
+  @Mapping(target = "orderId", source = "dto.orderId")
+  @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
+  @Mapping(target = "metadata", ignore = true)
+  @Mapping(target = "message", ignore = true)
+  PaymentEntity toPaymentEntity(
+      RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity);
+
   default PaymentStatus mapPaymentStatus(String status) {
     try {
       return PaymentStatus.valueOf(status);

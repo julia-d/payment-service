@@ -15,7 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.proxiadsee.interview.task.payment.dto.RequestPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
 
 @DisplayName("DtoValidator - RequestPaymentRequestDTO Tests")
 class DtoValidatorRequestPaymentTest {

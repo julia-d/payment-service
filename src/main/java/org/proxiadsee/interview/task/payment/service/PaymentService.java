@@ -1,8 +1,11 @@
 package org.proxiadsee.interview.task.payment.service;
 
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.proxiadsee.interview.task.payment.domain.dto.GetPaymentRequestDTO;
@@ -26,71 +29,92 @@ import payments.v1.PaymentServiceGrpc.PaymentServiceImplBase;
 @Component
 @RequiredArgsConstructor
 public class PaymentService extends PaymentServiceImplBase {
-  private static final HealthResponse OK_HEALTH_RESPONSE =
-      HealthResponse.newBuilder().setStatus("OK").build();
+    private static final HealthResponse OK_HEALTH_RESPONSE =
+            HealthResponse.newBuilder().setStatus("OK").build();
 
-  private final PaymentMapper paymentMapper;
-  private final DtoValidator dtoValidator;
-  private final IdempotencyKeyRepository idempotencyKeyRepository;
-  private final ProcessPaymentService processPaymentService;
-  private final PaymentRepository paymentRepository;
+    private final PaymentMapper paymentMapper;
+    private final DtoValidator dtoValidator;
+    private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final ProcessPaymentService processPaymentService;
+    private final PaymentRepository paymentRepository;
 
-  @Override
-  public void requestPayment(
-      RequestPaymentRequest request, StreamObserver<RequestPaymentResponse> responseObserver) {
-    log.info("Request payment: {}", request);
+    @Override
+    public void requestPayment(
+            RequestPaymentRequest request, StreamObserver<RequestPaymentResponse> responseObserver) {
+        log.info("Request payment: {}", request);
 
-    RequestPaymentRequestDTO dto = paymentMapper.toDto(request);
-    dtoValidator.validate(dto);
+        RequestPaymentRequestDTO dto = paymentMapper.toDto(request);
+        dtoValidator.validate(dto);
 
-    log.debug("Validated DTO: {}", dto);
+        log.debug("Validated DTO: {}", dto);
 
-    Optional<IdempotencyKeyEntity> existingEntity =
-        idempotencyKeyRepository.findByValue(dto.idempotencyKey());
+        RequestPaymentResponse response;
 
-    RequestPaymentResponse response;
-    if (existingEntity.isPresent()) {
-      log.info("Idempotency key already exists: {}", dto.idempotencyKey());
-      response = processPaymentService.processExistingPayment(dto, existingEntity.get());
-    } else {
-      log.info("Creating new idempotency key: {}", dto.idempotencyKey());
-      IdempotencyKeyEntity newEntity = new IdempotencyKeyEntity();
-      newEntity.setValue(dto.idempotencyKey());
-      newEntity.setRequestHash(String.valueOf(dto.hashCode()));
-      newEntity.setCreatedAt(LocalDateTime.now());
-      response = processPaymentService.processNewPayment(dto, newEntity);
+        try {
+            Optional<IdempotencyKeyEntity> existingEntity =
+                    idempotencyKeyRepository.findByValue(dto.idempotencyKey());
+
+            if (existingEntity.isPresent()) {
+                log.info("Idempotency key already exists: {}", dto.idempotencyKey());
+                response = processPaymentService.processExistingPayment(dto, existingEntity.get());
+            } else {
+                response = processNewPayment(dto);
+            }
+        } catch (Exception e) {
+            log.error("Error processing payment for idempotency key: {}", dto.idempotencyKey(), e);
+            Exception ex = Status.INTERNAL
+                    .withDescription("Failed to process payment")
+                    .withCause(e)
+                    .asRuntimeException();
+            responseObserver.onError(ex);
+            return;
+        }
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 
-    responseObserver.onNext(response);
-    responseObserver.onCompleted();
-  }
-
-  @Override
-  public void getPayment(
-      GetPaymentRequest request, StreamObserver<GetPaymentResponse> responseObserver) {
-    log.info("Get payment: {}", request);
-
-    GetPaymentRequestDTO dto = paymentMapper.toDto(request);
-    dtoValidator.validate(dto);
-
-    log.debug("Validated DTO: {}", dto);
-
-    Long id = Long.parseLong(dto.paymentId());
-    Optional<PaymentEntity> entityOpt = paymentRepository.findById(id);
-
-    if (entityOpt.isEmpty()) {
-      responseObserver.onNext(GetPaymentResponse.newBuilder().build());
-    } else {
-      GetPaymentResponse response = paymentMapper.toGetPaymentResponse(entityOpt.get());
-      responseObserver.onNext(response);
+    private RequestPaymentResponse processNewPayment(RequestPaymentRequestDTO dto) {
+        RequestPaymentResponse response;
+        log.info("Creating new idempotency key: {}", dto.idempotencyKey());
+        IdempotencyKeyEntity newEntity = paymentMapper.toIdempotencyKey(dto);
+        idempotencyKeyRepository.save(newEntity);
+        try {
+            response = processPaymentService.processNewPayment(dto, newEntity);
+        } catch (Exception e) {
+            log.error("Error processing new payment, deleting idempotency key: {}", dto.idempotencyKey(), e);
+            idempotencyKeyRepository.delete(newEntity);
+            throw e;
+        }
+        return response;
     }
-    responseObserver.onCompleted();
-  }
 
-  @Override
-  public void health(HealthRequest request, StreamObserver<HealthResponse> responseObserver) {
-    log.debug("Health check");
-    responseObserver.onNext(OK_HEALTH_RESPONSE);
-    responseObserver.onCompleted();
-  }
+    @Override
+    public void getPayment(
+            GetPaymentRequest request, StreamObserver<GetPaymentResponse> responseObserver) {
+        log.info("Get payment: {}", request);
+
+        GetPaymentRequestDTO dto = paymentMapper.toDto(request);
+        dtoValidator.validate(dto);
+
+        log.debug("Validated DTO: {}", dto);
+
+        Long id = Long.parseLong(dto.paymentId());
+        Optional<PaymentEntity> entityOpt = paymentRepository.findById(id);
+
+        if (entityOpt.isEmpty()) {
+            responseObserver.onNext(GetPaymentResponse.newBuilder().build());
+        } else {
+            GetPaymentResponse response = paymentMapper.toGetPaymentResponse(entityOpt.get());
+            responseObserver.onNext(response);
+        }
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void health(HealthRequest request, StreamObserver<HealthResponse> responseObserver) {
+        log.debug("Health check");
+        responseObserver.onNext(OK_HEALTH_RESPONSE);
+        responseObserver.onCompleted();
+    }
 }

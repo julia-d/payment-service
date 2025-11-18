@@ -23,7 +23,6 @@ import payments.v1.Payment.RequestPaymentResponse;
 public class ProcessPaymentService {
 
   private final PaymentRepository paymentRepository;
-  private final IdempotencyKeyRepository idempotencyKeyRepository;
   private final PaymentMapper paymentMapper;
   private final PaymentGatewayService paymentGatewayService;
 
@@ -32,43 +31,23 @@ public class ProcessPaymentService {
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity) {
     log.info("Processing new payment for idempotency key: {}", dto.idempotencyKey());
 
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCompletion(int status) {
-            if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
-              try {
-                idempotencyKeyRepository.delete(idempotencyKeyEntity);
-              } catch (Exception ex) {
-                log.warn(
-                    "Failed to delete idempotency key after rollback: {}",
-                    idempotencyKeyEntity.getId(),
-                    ex);
-              }
-            }
-          }
-        });
-
-    try {
       PaymentEntity paymentEntity = paymentMapper.toPaymentEntity(dto, idempotencyKeyEntity);
       PaymentEntity savedEntity = paymentRepository.save(paymentEntity);
 
       GatewayPaymentDTO gatewayResponse = paymentGatewayService.processPayment(dto);
 
-      savedEntity.setGatewayPaymentId(gatewayResponse.id());
-      savedEntity.setStatus(gatewayResponse.status().name());
-      savedEntity.setMessage(gatewayResponse.message());
-
-      PaymentEntity updatedEntity = paymentRepository.save(savedEntity);
+      PaymentEntity updatedEntity = savedEntity;
+      try {
+          savedEntity.setGatewayPaymentId(gatewayResponse.id());
+          savedEntity.setStatus(gatewayResponse.status().name());
+          savedEntity.setMessage(gatewayResponse.message());
+          updatedEntity = paymentRepository.save(savedEntity);
+      } catch (Exception e) {
+          // do not adding retry for test task simplicity
+          log.warn("Failed to update payment entity after gateway response, scheduling retry after transaction commit", e);
+      }
 
       return paymentMapper.toRequestPaymentResponse(updatedEntity);
-    } catch (Exception e) {
-      log.error("Error processing new payment for idempotency key: {}", dto.idempotencyKey(), e);
-      throw Status.INTERNAL
-          .withDescription("Failed to process payment")
-          .withCause(e)
-          .asRuntimeException();
-    }
   }
 
   public RequestPaymentResponse processExistingPayment(

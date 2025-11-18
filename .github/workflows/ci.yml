@@ -47,7 +47,7 @@ jobs:
         run: mvn clean test jacoco:report
 
       - name: Check coverage gate (80%)
-        run: mvn jacoco:check -Djacoco.csvOutputFile=coverage.csv -Dorg.jacoco.agent.destfile=target/jacoco.exec
+        run: mvn org.jacoco:jacoco-maven-plugin:0.8.11:check@check -Djacoco.csvOutputFile=coverage.csv -Dorg.jacoco.agent.destfile=target/jacoco.exec
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

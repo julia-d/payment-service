@@ -24,7 +24,7 @@ public class IdempotencyKeyEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false, unique = true)
+  @Column(name = "key_value", nullable = false, unique = true)
   private String value;
 
   @Column(name = "request_hash", nullable = false)

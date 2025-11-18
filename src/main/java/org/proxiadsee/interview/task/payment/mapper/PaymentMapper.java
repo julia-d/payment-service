@@ -5,10 +5,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.proxiadsee.interview.task.payment.dto.GetPaymentRequestDTO;
-import org.proxiadsee.interview.task.payment.dto.RequestPaymentRequestDTO;
-import org.proxiadsee.interview.task.payment.entity.IdempotencyKeyEntity;
-import org.proxiadsee.interview.task.payment.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.domain.dto.GetPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.domain.entity.IdempotencyKeyEntity;
+import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
 import payments.v1.Payment.GetPaymentRequest;
 import payments.v1.Payment.GetPaymentResponse;
 import payments.v1.Payment.PaymentStatus;
@@ -100,4 +100,10 @@ public interface PaymentMapper {
     int nanos = dateTime.getNano();
     return Timestamp.newBuilder().setSeconds(seconds).setNanos(nanos).build();
   }
+
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "requestHash", ignore = true)
+  @Mapping(target = "value", source = "idempotencyKey")
+  @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
+  IdempotencyKeyEntity toIdempotencyKey(RequestPaymentRequestDTO dto);
 }

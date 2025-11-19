@@ -1,6 +1,5 @@
 package org.proxiadsee.interview.task.payment.service;
 
-import io.grpc.Status;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,12 +8,9 @@ import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO
 import org.proxiadsee.interview.task.payment.domain.entity.IdempotencyKeyEntity;
 import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
 import org.proxiadsee.interview.task.payment.mapper.PaymentMapper;
-import org.proxiadsee.interview.task.payment.storage.IdempotencyKeyRepository;
 import org.proxiadsee.interview.task.payment.storage.PaymentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import payments.v1.Payment.RequestPaymentResponse;
 
 @Slf4j
@@ -31,23 +27,25 @@ public class ProcessPaymentService {
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity) {
     log.info("Processing new payment for idempotency key: {}", dto.idempotencyKey());
 
-      PaymentEntity paymentEntity = paymentMapper.toPaymentEntity(dto, idempotencyKeyEntity);
-      PaymentEntity savedEntity = paymentRepository.save(paymentEntity);
+    PaymentEntity paymentEntity = paymentMapper.toPaymentEntity(dto, idempotencyKeyEntity);
+    PaymentEntity savedEntity = paymentRepository.save(paymentEntity);
 
-      GatewayPaymentDTO gatewayResponse = paymentGatewayService.processPayment(dto);
+    GatewayPaymentDTO gatewayResponse = paymentGatewayService.processPayment(dto);
 
-      PaymentEntity updatedEntity = savedEntity;
-      try {
-          savedEntity.setGatewayPaymentId(gatewayResponse.id());
-          savedEntity.setStatus(gatewayResponse.status().name());
-          savedEntity.setMessage(gatewayResponse.message());
-          updatedEntity = paymentRepository.save(savedEntity);
-      } catch (Exception e) {
-          // do not adding retry for test task simplicity
-          log.warn("Failed to update payment entity after gateway response, scheduling retry after transaction commit", e);
-      }
+    PaymentEntity updatedEntity = savedEntity;
+    try {
+      savedEntity.setGatewayPaymentId(gatewayResponse.id());
+      savedEntity.setStatus(gatewayResponse.status().name());
+      savedEntity.setMessage(gatewayResponse.message());
+      updatedEntity = paymentRepository.save(savedEntity);
+    } catch (Exception e) {
+      // do not adding retry for test task simplicity
+      log.warn(
+          "Failed to update payment entity after gateway response, scheduling retry after transaction commit",
+          e);
+    }
 
-      return paymentMapper.toRequestPaymentResponse(updatedEntity);
+    return paymentMapper.toRequestPaymentResponse(updatedEntity);
   }
 
   public RequestPaymentResponse processExistingPayment(

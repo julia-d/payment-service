@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -27,6 +26,7 @@ import org.proxiadsee.interview.task.payment.domain.dto.GetPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.entity.IdempotencyKeyEntity;
 import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.exception.ServiceException;
 import org.proxiadsee.interview.task.payment.mapper.PaymentMapper;
 import org.proxiadsee.interview.task.payment.storage.IdempotencyKeyRepository;
 import org.proxiadsee.interview.task.payment.storage.PaymentRepository;
@@ -133,8 +133,7 @@ class PaymentServiceTest {
     StreamObserver<RequestPaymentResponse> responseObserver = mock(StreamObserver.class);
 
     assertThrows(
-        RuntimeException.class,
-        () -> paymentService.requestPayment(request, responseObserver));
+        RuntimeException.class, () -> paymentService.requestPayment(request, responseObserver));
 
     verify(responseObserver, never()).onNext(any());
     verify(responseObserver, never()).onError(any());
@@ -166,7 +165,8 @@ class PaymentServiceTest {
     verify(idempotencyKeyRepository).save(mappedIdempotency);
   }
 
-  @DisplayName("requestPayment - processNewPayment failure triggers idempotency key deletion and onError")
+  @DisplayName(
+      "requestPayment - processNewPayment failure triggers idempotency key deletion and exception")
   @Test
   void testRequestPaymentProcessNewPaymentFailureDeletesIdempotencyKey() {
     RequestPaymentRequest request = createValidRequestPaymentRequest();
@@ -182,12 +182,13 @@ class PaymentServiceTest {
     @SuppressWarnings("unchecked")
     StreamObserver<RequestPaymentResponse> responseObserver = mock(StreamObserver.class);
 
-    paymentService.requestPayment(request, responseObserver);
+    assertThrows(
+        ServiceException.class, () -> paymentService.requestPayment(request, responseObserver));
 
     verify(idempotencyKeyRepository).save(mappedIdempotency);
     verify(idempotencyKeyRepository).delete(mappedIdempotency);
-    verify(responseObserver).onError(any(StatusRuntimeException.class));
     verify(responseObserver, never()).onNext(any());
+    verify(responseObserver, never()).onError(any());
   }
 
   @DisplayName("getPayment - Happy path with existing payment")

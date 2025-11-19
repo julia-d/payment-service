@@ -20,11 +20,9 @@ import org.springframework.test.context.ActiveProfiles;
 @DisplayName("PaymentRepository H2 Tests")
 class PaymentRepositoryTest {
 
-  @Autowired
-  private PaymentRepository paymentRepository;
+  @Autowired private PaymentRepository paymentRepository;
 
-  @Autowired
-  private IdempotencyKeyRepository idempotencyKeyRepository;
+  @Autowired private IdempotencyKeyRepository idempotencyKeyRepository;
 
   @Test
   void saveAndFindByIdAndByIdempotencyKey() {
@@ -58,4 +56,3 @@ class PaymentRepositoryTest {
     assertEquals(savedPayment.getId(), foundByIdempotency.get().getId());
   }
 }
-

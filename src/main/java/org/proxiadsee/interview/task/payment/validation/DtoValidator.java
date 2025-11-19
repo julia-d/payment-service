@@ -1,11 +1,11 @@
 package org.proxiadsee.interview.task.payment.validation;
 
-import io.grpc.Status;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.proxiadsee.interview.task.payment.exception.ValidationException;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,7 +21,7 @@ public class DtoValidator {
           violations.stream()
               .map(v -> v.getPropertyPath() + ": " + v.getMessage())
               .collect(Collectors.joining(", "));
-      throw Status.INVALID_ARGUMENT.withDescription(errorMessage).asRuntimeException();
+      throw new ValidationException(errorMessage);
     }
   }
 }

@@ -5,12 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Optional;
@@ -18,16 +15,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.proxiadsee.interview.task.payment.domain.dto.GatewayPaymentDTO;
-import org.proxiadsee.interview.task.payment.domain.dto.PaymentStatusDTO;
 import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.entity.IdempotencyKeyEntity;
 import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
 import org.proxiadsee.interview.task.payment.mapper.PaymentMapper;
-import org.proxiadsee.interview.task.payment.storage.IdempotencyKeyRepository;
 import org.proxiadsee.interview.task.payment.storage.PaymentRepository;
 import payments.v1.Payment.RequestPaymentResponse;
 
@@ -36,8 +29,6 @@ import payments.v1.Payment.RequestPaymentResponse;
 class ProcessPaymentServiceExistingPaymentTest {
 
   @Mock private PaymentRepository paymentRepository;
-
-  @Mock private IdempotencyKeyRepository idempotencyKeyRepository;
 
   @Mock private PaymentMapper paymentMapper;
 
@@ -48,8 +39,7 @@ class ProcessPaymentServiceExistingPaymentTest {
   @BeforeEach
   void setUp() {
     processPaymentService =
-        new ProcessPaymentService(
-            paymentRepository, paymentMapper, paymentGatewayService);
+        new ProcessPaymentService(paymentRepository, paymentMapper, paymentGatewayService);
   }
 
   @DisplayName("processExistingPayment - Happy path: payment exists")

@@ -35,8 +35,7 @@ class ProcessPaymentServiceNewPaymentTest {
 
   @MockitoBean private PaymentMapper paymentMapper;
 
-  @MockitoBean
-  private PaymentGatewayService paymentGatewayService;
+  @MockitoBean private PaymentGatewayService paymentGatewayService;
 
   private RequestPaymentRequestDTO validDTO;
   private IdempotencyKeyEntity idempotencyKeyEntity;
@@ -66,8 +65,11 @@ class ProcessPaymentServiceNewPaymentTest {
     updatedPayment.setStatus("PENDING");
     updatedPayment.setMessage("Payment processed");
 
-    GatewayPaymentDTO gatewayResponse = new GatewayPaymentDTO("GATEWAY-123", PaymentStatusDTO.PAYMENT_STATUS_PENDING, "Payment processed");
-    RequestPaymentResponse expectedResponse = RequestPaymentResponse.newBuilder().setPaymentId("1").build();
+    GatewayPaymentDTO gatewayResponse =
+        new GatewayPaymentDTO(
+            "GATEWAY-123", PaymentStatusDTO.PAYMENT_STATUS_PENDING, "Payment processed");
+    RequestPaymentResponse expectedResponse =
+        RequestPaymentResponse.newBuilder().setPaymentId("1").build();
 
     when(paymentMapper.toPaymentEntity(validDTO, idempotencyKeyEntity)).thenReturn(initialPayment);
     when(paymentRepository.save(initialPayment)).thenReturn(savedPayment);
@@ -75,7 +77,8 @@ class ProcessPaymentServiceNewPaymentTest {
     when(paymentRepository.save(any(PaymentEntity.class))).thenReturn(updatedPayment);
     when(paymentMapper.toRequestPaymentResponse(updatedPayment)).thenReturn(expectedResponse);
 
-    RequestPaymentResponse response = processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity);
+    RequestPaymentResponse response =
+        processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity);
 
     assertNotNull(response);
     assertEquals("1", response.getPaymentId());
@@ -94,10 +97,12 @@ class ProcessPaymentServiceNewPaymentTest {
 
     when(paymentMapper.toPaymentEntity(validDTO, idempotencyKeyEntity)).thenReturn(initialPayment);
     when(paymentRepository.save(initialPayment)).thenReturn(savedPayment);
-    when(paymentGatewayService.processPayment(validDTO)).thenThrow(new RuntimeException("Gateway error"));
+    when(paymentGatewayService.processPayment(validDTO))
+        .thenThrow(new RuntimeException("Gateway error"));
 
-    assertThrows(RuntimeException.class, () ->
-        processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
+    assertThrows(
+        RuntimeException.class,
+        () -> processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
 
     verify(paymentRepository, times(1)).save(initialPayment);
     verify(paymentGatewayService).processPayment(validDTO);
@@ -109,8 +114,9 @@ class ProcessPaymentServiceNewPaymentTest {
     when(paymentMapper.toPaymentEntity(validDTO, idempotencyKeyEntity))
         .thenThrow(new RuntimeException("Mapping to entity failed"));
 
-    assertThrows(RuntimeException.class, () ->
-        processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
+    assertThrows(
+        RuntimeException.class,
+        () -> processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
 
     verify(paymentMapper).toPaymentEntity(validDTO, idempotencyKeyEntity);
     verify(paymentRepository, times(0)).save(any(PaymentEntity.class));
@@ -123,10 +129,12 @@ class ProcessPaymentServiceNewPaymentTest {
     PaymentEntity initialPayment = createValidPaymentEntity();
 
     when(paymentMapper.toPaymentEntity(validDTO, idempotencyKeyEntity)).thenReturn(initialPayment);
-    when(paymentRepository.save(initialPayment)).thenThrow(new RuntimeException("Database error on first save"));
+    when(paymentRepository.save(initialPayment))
+        .thenThrow(new RuntimeException("Database error on first save"));
 
-    assertThrows(RuntimeException.class, () ->
-        processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
+    assertThrows(
+        RuntimeException.class,
+        () -> processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
 
     verify(paymentMapper).toPaymentEntity(validDTO, idempotencyKeyEntity);
     verify(paymentRepository, times(1)).save(initialPayment);
@@ -174,7 +182,9 @@ class ProcessPaymentServiceNewPaymentTest {
     updatedPayment.setGatewayPaymentId("GATEWAY-123");
     updatedPayment.setStatus("PENDING");
     updatedPayment.setMessage("Payment processed");
-    GatewayPaymentDTO gatewayResponse = new GatewayPaymentDTO("GATEWAY-123", PaymentStatusDTO.PAYMENT_STATUS_FAILED, "Payment processed");
+    GatewayPaymentDTO gatewayResponse =
+        new GatewayPaymentDTO(
+            "GATEWAY-123", PaymentStatusDTO.PAYMENT_STATUS_FAILED, "Payment processed");
 
     when(paymentMapper.toPaymentEntity(validDTO, idempotencyKeyEntity)).thenReturn(initialPayment);
     when(paymentRepository.save(initialPayment)).thenReturn(savedPayment);
@@ -183,8 +193,9 @@ class ProcessPaymentServiceNewPaymentTest {
     when(paymentMapper.toRequestPaymentResponse(updatedPayment))
         .thenThrow(new RuntimeException("Mapping to response failed"));
 
-    assertThrows(RuntimeException.class, () ->
-        processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
+    assertThrows(
+        RuntimeException.class,
+        () -> processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
 
     verify(paymentMapper).toPaymentEntity(validDTO, idempotencyKeyEntity);
     verify(paymentRepository, times(2)).save(any(PaymentEntity.class));
@@ -204,8 +215,9 @@ class ProcessPaymentServiceNewPaymentTest {
     when(paymentGatewayService.processPayment(validDTO))
         .thenThrow(new RuntimeException("Gateway timeout"));
 
-    assertThrows(RuntimeException.class, () ->
-        processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
+    assertThrows(
+        RuntimeException.class,
+        () -> processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
 
     verify(paymentRepository, times(1)).save(initialPayment);
     verify(paymentGatewayService).processPayment(validDTO);
@@ -218,8 +230,9 @@ class ProcessPaymentServiceNewPaymentTest {
     when(paymentMapper.toPaymentEntity(validDTO, idempotencyKeyEntity))
         .thenThrow(new NullPointerException("Null entity creation"));
 
-    assertThrows(NullPointerException.class, () ->
-        processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
+    assertThrows(
+        NullPointerException.class,
+        () -> processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
 
     verify(paymentMapper).toPaymentEntity(validDTO, idempotencyKeyEntity);
     verify(paymentRepository, times(0)).save(any());
@@ -237,14 +250,13 @@ class ProcessPaymentServiceNewPaymentTest {
     when(paymentGatewayService.processPayment(validDTO))
         .thenThrow(new IllegalArgumentException("Invalid payment data"));
 
-    assertThrows(IllegalArgumentException.class, () ->
-        processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> processPaymentService.processNewPayment(validDTO, idempotencyKeyEntity));
 
     verify(paymentRepository, times(1)).save(initialPayment);
     verify(paymentGatewayService).processPayment(validDTO);
   }
-
-
 
   private PaymentEntity createValidPaymentEntity() {
     PaymentEntity entity = new PaymentEntity();

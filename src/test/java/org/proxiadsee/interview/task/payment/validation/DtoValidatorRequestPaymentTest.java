@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.grpc.StatusRuntimeException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.util.HashMap;
@@ -16,6 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
+import org.proxiadsee.interview.task.payment.exception.ValidationException;
 
 @DisplayName("DtoValidator - RequestPaymentRequestDTO Tests")
 class DtoValidatorRequestPaymentTest {
@@ -43,9 +43,9 @@ class DtoValidatorRequestPaymentTest {
   @DisplayName("Should fail validation for invalid RequestPaymentRequestDTO")
   void shouldFailValidationForInvalidDto(
       String testCase, RequestPaymentRequestDTO dto, String expectedErrorField) {
-    StatusRuntimeException exception =
+    ValidationException exception =
         assertThrows(
-            StatusRuntimeException.class,
+            ValidationException.class,
             () -> dtoValidator.validate(dto),
             "Expected validation to fail for: " + testCase);
 

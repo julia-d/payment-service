@@ -40,12 +40,12 @@ public class PaymentService extends PaymentServiceImplBase {
   @Override
   public void requestPayment(
       RequestPaymentRequest request, StreamObserver<RequestPaymentResponse> responseObserver) {
-    log.info("Request payment: {}", request);
-
     RequestPaymentRequestDTO dto = paymentMapper.toDto(request);
+    log.info("Request payment received, orderId={}", dto.orderId());
+
     dtoValidator.validate(dto);
 
-    log.debug("Validated DTO: {}", dto);
+    log.debug("DTO validated successfully, orderId={}", dto.orderId());
 
     RequestPaymentResponse response;
 
@@ -55,7 +55,9 @@ public class PaymentService extends PaymentServiceImplBase {
           idempotencyKeyRepository.findByValue(hashedKey);
 
       if (existingEntity.isPresent()) {
-        log.info("Idempotency key already exists: {}", dto.idempotencyKey());
+        log.info(
+            "Idempotency key already exists, processing existing payment, orderId={}",
+            dto.orderId());
         response = processPaymentService.processExistingPayment(dto, existingEntity.get());
       } else {
         response = processNewPayment(dto);
@@ -63,24 +65,28 @@ public class PaymentService extends PaymentServiceImplBase {
     } catch (ConflictException | ServiceException e) {
       throw e;
     } catch (Exception e) {
-      log.error("Error processing payment for idempotency key: {}", dto.idempotencyKey(), e);
+      log.error("Error processing payment request, orderId={}", dto.orderId(), e);
       throw new ServiceException("Failed to process payment", e);
     }
 
+    log.info(
+        "Payment request completed successfully, orderId={}, paymentId={}",
+        dto.orderId(),
+        response.getPaymentId());
     responseObserver.onNext(response);
     responseObserver.onCompleted();
   }
 
   private RequestPaymentResponse processNewPayment(RequestPaymentRequestDTO dto) {
     RequestPaymentResponse response;
-    log.info("Creating new idempotency key: {}", dto.idempotencyKey());
+    log.info("Creating new idempotency key, orderId={}", dto.orderId());
     IdempotencyKeyEntity newEntity = paymentMapper.toIdempotencyKey(dto);
     idempotencyKeyRepository.save(newEntity);
     try {
       response = processPaymentService.processNewPayment(dto, newEntity);
     } catch (Exception e) {
       log.error(
-          "Error processing new payment, deleting idempotency key: {}", dto.idempotencyKey(), e);
+          "Error processing new payment, deleting idempotency key, orderId={}", dto.orderId(), e);
       idempotencyKeyRepository.delete(newEntity);
       throw new ServiceException("Failed to process new payment", e);
     }
@@ -90,20 +96,27 @@ public class PaymentService extends PaymentServiceImplBase {
   @Override
   public void getPayment(
       GetPaymentRequest request, StreamObserver<GetPaymentResponse> responseObserver) {
-    log.info("Get payment: {}", request);
-
     GetPaymentRequestDTO dto = paymentMapper.toDto(request);
+    log.info("Get payment request received, paymentId={}", dto.paymentId());
+
     dtoValidator.validate(dto);
 
-    log.debug("Validated DTO: {}", dto);
+    log.debug("DTO validated successfully, paymentId={}", dto.paymentId());
 
     Long id = Long.parseLong(dto.paymentId());
     Optional<PaymentEntity> entityOpt = paymentRepository.findById(id);
 
     if (entityOpt.isEmpty()) {
+      log.info("Payment not found, paymentId={}", dto.paymentId());
       responseObserver.onNext(GetPaymentResponse.newBuilder().build());
     } else {
-      GetPaymentResponse response = paymentMapper.toGetPaymentResponse(entityOpt.get());
+      PaymentEntity entity = entityOpt.get();
+      log.info(
+          "Payment found, paymentId={}, orderId={}, status={}",
+          dto.paymentId(),
+          entity.getOrderId(),
+          entity.getStatus());
+      GetPaymentResponse response = paymentMapper.toGetPaymentResponse(entity);
       responseObserver.onNext(response);
     }
     responseObserver.onCompleted();

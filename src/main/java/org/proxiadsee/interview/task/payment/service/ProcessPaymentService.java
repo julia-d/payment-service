@@ -26,10 +26,13 @@ public class ProcessPaymentService {
   @Transactional(rollbackFor = Exception.class)
   public RequestPaymentResponse processNewPayment(
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity) {
-    log.info("Processing new payment for idempotency key: {}", dto.idempotencyKey());
+    log.info("Processing new payment, orderId={}", dto.orderId());
 
     PaymentEntity paymentEntity = paymentMapper.toPaymentEntity(dto, idempotencyKeyEntity);
     PaymentEntity savedEntity = paymentRepository.save(paymentEntity);
+
+    log.debug(
+        "Payment entity created, paymentId={}, orderId={}", savedEntity.getId(), dto.orderId());
 
     GatewayPaymentDTO gatewayResponse = paymentGatewayService.processPayment(dto);
 
@@ -39,10 +42,17 @@ public class ProcessPaymentService {
       savedEntity.setStatus(gatewayResponse.status().name());
       savedEntity.setMessage(gatewayResponse.message());
       updatedEntity = paymentRepository.save(savedEntity);
+      log.info(
+          "Payment processed successfully, paymentId={}, orderId={}, status={}, gatewayId={}",
+          updatedEntity.getId(),
+          dto.orderId(),
+          gatewayResponse.status().name(),
+          gatewayResponse.id());
     } catch (Exception e) {
-      // do not adding retry for test task simplicity
       log.warn(
-          "Failed to update payment entity after gateway response, scheduling retry after transaction commit",
+          "Failed to update payment entity after gateway response, paymentId={}, orderId={}, scheduling retry after transaction commit",
+          savedEntity.getId(),
+          dto.orderId(),
           e);
     }
 
@@ -52,28 +62,29 @@ public class ProcessPaymentService {
   public RequestPaymentResponse processExistingPayment(
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity) {
     log.info(
-        "Processing existing payment for idempotency key: {}", idempotencyKeyEntity.getValue());
-    log.debug("Idempotency key ID: {}", idempotencyKeyEntity.getId());
+        "Processing existing payment, orderId={}, idempotencyKeyId={}",
+        dto.orderId(),
+        idempotencyKeyEntity.getId());
 
     validateRequestHash(dto, idempotencyKeyEntity);
 
     Optional<PaymentEntity> paymentOpt =
         paymentRepository.findByIdempotencyKeyId(idempotencyKeyEntity.getId());
 
-    log.debug("Payment entity found: {}", paymentOpt.isPresent());
-
     if (paymentOpt.isPresent()) {
       PaymentEntity entity = paymentOpt.get();
       log.info(
-          "Found existing payment: id={}, status={}, gatewayId={}",
+          "Found existing payment: paymentId={}, orderId={}, status={}, gatewayId={}",
           entity.getId(),
+          entity.getOrderId(),
           entity.getStatus(),
           entity.getGatewayPaymentId());
       return paymentMapper.toRequestPaymentResponse(entity);
     } else {
       log.warn(
-          "No payment found for idempotency key ID: {}, returning default response",
-          idempotencyKeyEntity.getId());
+          "No payment found for idempotency key ID: {}, orderId={}, returning default response",
+          idempotencyKeyEntity.getId(),
+          dto.orderId());
       return paymentMapper.toRequestPaymentResponse(dto, idempotencyKeyEntity);
     }
   }
@@ -85,13 +96,13 @@ public class ProcessPaymentService {
 
     if (!currentHash.equals(storedHash)) {
       log.error(
-          "Hash mismatch for idempotency key {}: current={}, stored={}",
-          idempotencyKeyEntity.getValue(),
+          "Hash mismatch for payment request, idempotencyKeyId={}, orderId={}, currentHash={}, storedHash={}",
+          idempotencyKeyEntity.getId(),
+          dto.orderId(),
           currentHash,
           storedHash);
       throw new ConflictException(
-          "Request hash does not match stored hash for idempotency key: "
-              + idempotencyKeyEntity.getValue());
+          "Request hash does not match stored hash for the provided idempotency key");
     }
   }
 }

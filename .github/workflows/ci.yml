@@ -77,66 +77,56 @@ jobs:
       - name: Build Docker image
         run: docker build -t payment-service:${{ github.sha }} .
 
-      - name: Test Docker image
+      - name: Run container and verify actuator health
+        shell: bash
         run: |
           set -euo pipefail
 
           CONTAINER_NAME=payment-service-ci
           IMAGE=payment-service:${{ github.sha }}
+          ACTUATOR_URL="http://localhost:8081/actuator/health"
 
           echo "Starting container $CONTAINER_NAME from image $IMAGE"
-          docker run -d --name "$CONTAINER_NAME" -p 9090:9090 "$IMAGE"
+          docker run -d --name "$CONTAINER_NAME" -p 8081:8081 "$IMAGE"
 
-          echo "Waiting 60 seconds for the container to initialize before starting health checks"
+          echo "Initial sleep 60 seconds before health polling"
           sleep 60
 
-          echo "Installing grpcurl to call the gRPC health method"
-          curl -sL -o /tmp/grpcurl.tar.gz "https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_x86_64.tar.gz"
-          tar -xzf /tmp/grpcurl.tar.gz -C /tmp
-          sudo mv /tmp/grpcurl /usr/local/bin/grpcurl
-          sudo chmod +x /usr/local/bin/grpcurl
+          echo "Starting actuator health polling for up to 60 seconds"
+          START_TIME=$(date +%s)
+          HEALTH_OK=0
 
-          echo "Gathering initial container diagnostics"
-          docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          docker inspect --format '{{json .State}}' "$CONTAINER_NAME" || true
-          echo "Recent container logs (last 200 lines):"
-          docker logs --tail 200 "$CONTAINER_NAME" || true
-
-          echo "Waiting for gRPC PaymentService health RPC payments.v1.Payment/health to return a status of \"OK\""
-          SUCCESS=0
-
-          for i in $(seq 1 30); do
-            echo "Attempt $i: invoking gRPC health method..."
-            OUT=$(/usr/local/bin/grpcurl -plaintext -proto src/main/proto/payment.proto -d '{}' localhost:9090 payments.v1.Payment/health 2>&1) || true
-            EXIT_CODE=$?
-            echo "grpcurl exit_code=$EXIT_CODE"
-            echo "grpcurl output:\n$OUT"
-
-            # Check for status OK in the output (accepts either JSON or proto-style output)
-            if echo "$OUT" | grep -q '"status"[[:space:]]*:[[:space:]]*"OK"' || echo "$OUT" | grep -q 'status:[[:space:]]*"OK"'; then
-              echo "gRPC health check passed on attempt $i"
-              SUCCESS=1
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED=$((NOW - START_TIME))
+            if [ "$ELAPSED" -ge 60 ]; then
+              echo "Actuator health endpoint did not become healthy within 60 seconds of polling"
               break
             fi
 
-            echo "gRPC health check not ready yet (attempt $i). Dumping recent container logs to help debugging..."
-            docker logs --tail 100 "$CONTAINER_NAME" || true
-            sleep 2
+            echo "Requesting actuator health at $ACTUATOR_URL (elapsed ${ELAPSED}s)"
+            HTTP_CODE=$(curl -s -o /tmp/health_body -w "%{http_code}" "$ACTUATOR_URL" || echo "000")
+            echo "HTTP status code: $HTTP_CODE"
+            echo "Response body:"
+            cat /tmp/health_body || true
+
+            if [ "$HTTP_CODE" = "200" ] && grep -q '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/health_body; then
+              echo "Actuator health is UP"
+              HEALTH_OK=1
+              break
+            fi
+
+            echo "Actuator health not UP yet, waiting 5 seconds before next retry"
+            sleep 5
           done
 
-          if [ "$SUCCESS" -ne 1 ]; then
-            echo "gRPC health check failed after retries - full diagnostics follow"
-            echo "== Container logs (full) =="
-            docker logs "$CONTAINER_NAME" || true
-            echo "== Container inspect =="
-            docker inspect "$CONTAINER_NAME" || true
-            echo "== Docker ps -a =="
-            docker ps -a || true
-            echo "== Net listening on host (show TCP listeners) =="
-            ss -ltnp || netstat -ltnp || true
-            docker rm -f "$CONTAINER_NAME" || true
+          echo "Stopping and removing container $CONTAINER_NAME"
+          docker logs "$CONTAINER_NAME" || true
+          docker rm -f "$CONTAINER_NAME" || true
+
+          if [ "$HEALTH_OK" -ne 1 ]; then
+            echo "ERROR: Actuator health check failed. See logs above for details."
             exit 1
           fi
 
-          echo "Service started successfully (gRPC health OK), stopping container"
-          docker rm -f "$CONTAINER_NAME"
+          echo "Actuator health check succeeded. Build stage completed successfully."

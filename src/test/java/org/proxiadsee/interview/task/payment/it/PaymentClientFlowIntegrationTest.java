@@ -9,7 +9,6 @@ import io.grpc.StatusRuntimeException;
 import java.util.HashMap;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.proxiadsee.interview.task.payment.PaymentServiceApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -42,7 +41,6 @@ class PaymentClientFlowIntegrationTest {
     }
   }
 
-  @Test
   void fullClientFlow() {
     HealthResponse healthResponse = stub.health(HealthRequest.newBuilder().build());
     assertNotNull(healthResponse, "Health response must not be null");

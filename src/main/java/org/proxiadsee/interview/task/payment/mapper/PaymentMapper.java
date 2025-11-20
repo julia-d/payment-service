@@ -9,6 +9,8 @@ import org.proxiadsee.interview.task.payment.domain.dto.GetPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.entity.IdempotencyKeyEntity;
 import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.service.IdempotencyKeyHashingService;
+import org.springframework.beans.factory.annotation.Autowired;
 import payments.v1.Payment.GetPaymentRequest;
 import payments.v1.Payment.GetPaymentResponse;
 import payments.v1.Payment.PaymentStatus;
@@ -16,42 +18,48 @@ import payments.v1.Payment.RequestPaymentRequest;
 import payments.v1.Payment.RequestPaymentResponse;
 
 @Mapper(componentModel = "spring")
-public interface PaymentMapper {
+public abstract class PaymentMapper {
+
+  @Autowired protected IdempotencyKeyHashingService hashingService;
 
   @Mapping(target = "amountMinor", source = "amountMinor")
   @Mapping(target = "currency", source = "currency")
   @Mapping(target = "orderId", source = "orderId")
   @Mapping(target = "idempotencyKey", source = "idempotencyKey")
   @Mapping(target = "metadata", source = "metadataMap")
-  RequestPaymentRequestDTO toDto(RequestPaymentRequest request);
+  public abstract RequestPaymentRequestDTO toDto(RequestPaymentRequest request);
 
   @Mapping(target = "paymentId", source = "paymentId")
-  GetPaymentRequestDTO toDto(GetPaymentRequest request);
+  public abstract GetPaymentRequestDTO toDto(GetPaymentRequest request);
 
   @Mapping(target = "paymentId", expression = "java(String.valueOf(entity.getId()))")
   @Mapping(target = "status", expression = "java(mapPaymentStatus(entity.getStatus()))")
   @Mapping(target = "amountMinor", source = "amountMinor")
   @Mapping(target = "currency", source = "currency")
   @Mapping(target = "orderId", source = "orderId")
-  @Mapping(target = "idempotencyKey", expression = "java(entity.getIdempotencyKey().getValue())")
+  @Mapping(
+      target = "idempotencyKey",
+      expression = "java(hashingService.unhash(entity.getIdempotencyKey().getValue()))")
   @Mapping(
       target = "createdAt",
       expression = "java(mapLocalDateTimeToTimestamp(entity.getCreatedAt()))")
   @Mapping(
       target = "message",
       expression = "java(entity.getMessage() == null ? \"\" : entity.getMessage())")
-  GetPaymentResponse toGetPaymentResponse(PaymentEntity entity);
+  public abstract GetPaymentResponse toGetPaymentResponse(PaymentEntity entity);
 
   @Mapping(target = "paymentId", expression = "java(String.valueOf(entity.getId()))")
   @Mapping(target = "status", expression = "java(mapPaymentStatus(entity.getStatus()))")
   @Mapping(
       target = "message",
       expression = "java(entity.getMessage() == null ? \"\" : entity.getMessage())")
-  @Mapping(target = "idempotencyKey", expression = "java(entity.getIdempotencyKey().getValue())")
+  @Mapping(
+      target = "idempotencyKey",
+      expression = "java(hashingService.unhash(entity.getIdempotencyKey().getValue()))")
   @Mapping(
       target = "createdAt",
       expression = "java(mapLocalDateTimeToTimestamp(entity.getCreatedAt()))")
-  RequestPaymentResponse toRequestPaymentResponse(PaymentEntity entity);
+  public abstract RequestPaymentResponse toRequestPaymentResponse(PaymentEntity entity);
 
   @Mapping(target = "status", constant = "PAYMENT_STATUS_UNSPECIFIED")
   @Mapping(target = "idempotencyKey", source = "dto.idempotencyKey")
@@ -59,7 +67,7 @@ public interface PaymentMapper {
       target = "createdAt",
       source = "idempotencyKeyEntity.createdAt",
       qualifiedByName = "toTimestamp")
-  RequestPaymentResponse toRequestPaymentResponse(
+  public abstract RequestPaymentResponse toRequestPaymentResponse(
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity);
 
   @Mapping(target = "id", ignore = true)
@@ -72,10 +80,10 @@ public interface PaymentMapper {
   @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
   @Mapping(target = "metadata", ignore = true)
   @Mapping(target = "message", ignore = true)
-  PaymentEntity toPaymentEntity(
+  public abstract PaymentEntity toPaymentEntity(
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity);
 
-  default PaymentStatus mapPaymentStatus(String status) {
+  public PaymentStatus mapPaymentStatus(String status) {
     try {
       return PaymentStatus.valueOf(status);
     } catch (IllegalArgumentException ex) {
@@ -83,7 +91,7 @@ public interface PaymentMapper {
     }
   }
 
-  default Timestamp mapLocalDateTimeToTimestamp(LocalDateTime dateTime) {
+  public Timestamp mapLocalDateTimeToTimestamp(LocalDateTime dateTime) {
     long seconds = dateTime.toInstant(ZoneOffset.UTC).getEpochSecond();
     int nanos = dateTime.getNano();
     int millisNanos = (nanos / 1_000_000) * 1_000_000;
@@ -91,7 +99,7 @@ public interface PaymentMapper {
   }
 
   @org.mapstruct.Named("toTimestamp")
-  default Timestamp toTimestamp(LocalDateTime dateTime) {
+  public Timestamp toTimestamp(LocalDateTime dateTime) {
     if (dateTime == null) {
       return Timestamp.newBuilder().build();
     }
@@ -103,7 +111,7 @@ public interface PaymentMapper {
 
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "requestHash", expression = "java(String.valueOf(dto.hashCode()))")
-  @Mapping(target = "value", source = "idempotencyKey")
+  @Mapping(target = "value", expression = "java(hashingService.hash(dto.idempotencyKey()))")
   @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
-  IdempotencyKeyEntity toIdempotencyKey(RequestPaymentRequestDTO dto);
+  public abstract IdempotencyKeyEntity toIdempotencyKey(RequestPaymentRequestDTO dto);
 }

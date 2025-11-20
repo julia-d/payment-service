@@ -52,6 +52,8 @@ class PaymentServiceTest {
 
   @Mock private PaymentRepository paymentRepository;
 
+  @Mock private IdempotencyKeyHashingService hashingService;
+
   private PaymentService paymentService;
 
   @BeforeEach
@@ -62,7 +64,8 @@ class PaymentServiceTest {
             dtoValidator,
             idempotencyKeyRepository,
             processPaymentService,
-            paymentRepository);
+            paymentRepository,
+            hashingService);
   }
 
   @DisplayName("requestPayment - Happy path with new idempotency key")
@@ -72,9 +75,11 @@ class PaymentServiceTest {
     RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
     RequestPaymentResponse expectedResponse = createValidRequestPaymentResponse();
     IdempotencyKeyEntity mappedIdempotency = createValidIdempotencyKeyEntity();
+    String hashedKey = "hashedKey";
 
     when(paymentMapper.toDto(request)).thenReturn(dto);
-    when(idempotencyKeyRepository.findByValue(dto.idempotencyKey())).thenReturn(Optional.empty());
+    when(hashingService.hash(dto.idempotencyKey())).thenReturn(hashedKey);
+    when(idempotencyKeyRepository.findByValue(hashedKey)).thenReturn(Optional.empty());
     when(paymentMapper.toIdempotencyKey(dto)).thenReturn(mappedIdempotency);
     when(processPaymentService.processNewPayment(dto, mappedIdempotency))
         .thenReturn(expectedResponse);
@@ -99,10 +104,11 @@ class PaymentServiceTest {
     RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
     IdempotencyKeyEntity existingEntity = createValidIdempotencyKeyEntity();
     RequestPaymentResponse expectedResponse = createValidRequestPaymentResponse();
+    String hashedKey = "hashedKey";
 
     when(paymentMapper.toDto(request)).thenReturn(dto);
-    when(idempotencyKeyRepository.findByValue(dto.idempotencyKey()))
-        .thenReturn(Optional.of(existingEntity));
+    when(hashingService.hash(dto.idempotencyKey())).thenReturn(hashedKey);
+    when(idempotencyKeyRepository.findByValue(hashedKey)).thenReturn(Optional.of(existingEntity));
     when(processPaymentService.processExistingPayment(dto, existingEntity))
         .thenReturn(expectedResponse);
 
@@ -149,9 +155,11 @@ class PaymentServiceTest {
     RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
     RequestPaymentResponse expectedResponse = createValidRequestPaymentResponse();
     IdempotencyKeyEntity mappedIdempotency = createValidIdempotencyKeyEntity();
+    String hashedKey = "hashedKey";
 
     when(paymentMapper.toDto(request)).thenReturn(dto);
-    when(idempotencyKeyRepository.findByValue(dto.idempotencyKey())).thenReturn(Optional.empty());
+    when(hashingService.hash(dto.idempotencyKey())).thenReturn(hashedKey);
+    when(idempotencyKeyRepository.findByValue(hashedKey)).thenReturn(Optional.empty());
     when(paymentMapper.toIdempotencyKey(dto)).thenReturn(mappedIdempotency);
     when(processPaymentService.processNewPayment(dto, mappedIdempotency))
         .thenReturn(expectedResponse);
@@ -172,9 +180,11 @@ class PaymentServiceTest {
     RequestPaymentRequest request = createValidRequestPaymentRequest();
     RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
     IdempotencyKeyEntity mappedIdempotency = createValidIdempotencyKeyEntity();
+    String hashedKey = "hashedKey";
 
     when(paymentMapper.toDto(request)).thenReturn(dto);
-    when(idempotencyKeyRepository.findByValue(dto.idempotencyKey())).thenReturn(Optional.empty());
+    when(hashingService.hash(dto.idempotencyKey())).thenReturn(hashedKey);
+    when(idempotencyKeyRepository.findByValue(hashedKey)).thenReturn(Optional.empty());
     when(paymentMapper.toIdempotencyKey(dto)).thenReturn(mappedIdempotency);
     when(processPaymentService.processNewPayment(dto, mappedIdempotency))
         .thenThrow(new RuntimeException("Processing failed"));

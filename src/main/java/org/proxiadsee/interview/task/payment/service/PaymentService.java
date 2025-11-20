@@ -35,6 +35,7 @@ public class PaymentService extends PaymentServiceImplBase {
   private final IdempotencyKeyRepository idempotencyKeyRepository;
   private final ProcessPaymentService processPaymentService;
   private final PaymentRepository paymentRepository;
+  private final IdempotencyKeyHashingService hashingService;
 
   @Override
   public void requestPayment(
@@ -49,8 +50,9 @@ public class PaymentService extends PaymentServiceImplBase {
     RequestPaymentResponse response;
 
     try {
+      String hashedKey = hashingService.hash(dto.idempotencyKey());
       Optional<IdempotencyKeyEntity> existingEntity =
-          idempotencyKeyRepository.findByValue(dto.idempotencyKey());
+          idempotencyKeyRepository.findByValue(hashedKey);
 
       if (existingEntity.isPresent()) {
         log.info("Idempotency key already exists: {}", dto.idempotencyKey());

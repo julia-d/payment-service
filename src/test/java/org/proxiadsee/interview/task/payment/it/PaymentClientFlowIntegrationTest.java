@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.proxiadsee.interview.task.payment.PaymentServiceApplication;
 import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.service.IdempotencyKeyHashingService;
 import org.proxiadsee.interview.task.payment.storage.IdempotencyKeyRepository;
 import org.proxiadsee.interview.task.payment.storage.PaymentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,7 @@ class PaymentClientFlowIntegrationTest {
 
   @Autowired private PaymentRepository paymentRepository;
   @Autowired private IdempotencyKeyRepository idempotencyKeyRepository;
+  @Autowired private IdempotencyKeyHashingService hashingService;
 
   @BeforeAll
   static void setUpChannel() {
@@ -102,7 +104,8 @@ class PaymentClientFlowIntegrationTest {
     assertThat(savedEntity.getOrderId()).isEqualTo(firstRequest.getOrderId());
     assertThat(savedEntity.getCreatedAt()).isNotNull();
     assertThat(savedEntity.getIdempotencyKey()).isNotNull();
-    assertThat(savedEntity.getIdempotencyKey().getValue()).isEqualTo(idempotencyKey);
+    assertThat(savedEntity.getIdempotencyKey().getValue())
+        .isEqualTo(hashingService.hash(idempotencyKey));
 
     // repeated request
     RequestPaymentResponse secondResponse = stub.requestPayment(firstRequest);

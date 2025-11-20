@@ -53,9 +53,7 @@ public interface PaymentMapper {
       expression = "java(mapLocalDateTimeToTimestamp(entity.getCreatedAt()))")
   RequestPaymentResponse toRequestPaymentResponse(PaymentEntity entity);
 
-  @Mapping(target = "paymentId", constant = "")
   @Mapping(target = "status", constant = "PAYMENT_STATUS_UNSPECIFIED")
-  @Mapping(target = "message", constant = "")
   @Mapping(target = "idempotencyKey", source = "dto.idempotencyKey")
   @Mapping(
       target = "createdAt",
@@ -88,7 +86,8 @@ public interface PaymentMapper {
   default Timestamp mapLocalDateTimeToTimestamp(LocalDateTime dateTime) {
     long seconds = dateTime.toInstant(ZoneOffset.UTC).getEpochSecond();
     int nanos = dateTime.getNano();
-    return Timestamp.newBuilder().setSeconds(seconds).setNanos(nanos).build();
+    int millisNanos = (nanos / 1_000_000) * 1_000_000;
+    return Timestamp.newBuilder().setSeconds(seconds).setNanos(millisNanos).build();
   }
 
   @org.mapstruct.Named("toTimestamp")
@@ -98,11 +97,12 @@ public interface PaymentMapper {
     }
     long seconds = dateTime.toInstant(ZoneOffset.UTC).getEpochSecond();
     int nanos = dateTime.getNano();
-    return Timestamp.newBuilder().setSeconds(seconds).setNanos(nanos).build();
+    int millisNanos = (nanos / 1_000_000) * 1_000_000;
+    return Timestamp.newBuilder().setSeconds(seconds).setNanos(millisNanos).build();
   }
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "requestHash", ignore = true)
+  @Mapping(target = "requestHash", expression = "java(String.valueOf(dto.hashCode()))")
   @Mapping(target = "value", source = "idempotencyKey")
   @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
   IdempotencyKeyEntity toIdempotencyKey(RequestPaymentRequestDTO dto);

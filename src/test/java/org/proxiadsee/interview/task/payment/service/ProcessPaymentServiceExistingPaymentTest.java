@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.entity.IdempotencyKeyEntity;
 import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.exception.ConflictException;
 import org.proxiadsee.interview.task.payment.mapper.PaymentMapper;
 import org.proxiadsee.interview.task.payment.storage.PaymentRepository;
 import payments.v1.Payment.RequestPaymentResponse;
@@ -51,7 +52,7 @@ class ProcessPaymentServiceExistingPaymentTest {
     existingPayment.setId(1L);
     RequestPaymentResponse expectedResponse = createValidRequestPaymentResponse();
 
-    when(paymentRepository.findByIdempotencyKey_Id(idempotencyKeyEntity.getId()))
+    when(paymentRepository.findByIdempotencyKeyId(idempotencyKeyEntity.getId()))
         .thenReturn(Optional.of(existingPayment));
     when(paymentMapper.toRequestPaymentResponse(existingPayment)).thenReturn(expectedResponse);
 
@@ -60,7 +61,7 @@ class ProcessPaymentServiceExistingPaymentTest {
 
     assertNotNull(response);
     assertEquals(expectedResponse, response);
-    verify(paymentRepository).findByIdempotencyKey_Id(idempotencyKeyEntity.getId());
+    verify(paymentRepository).findByIdempotencyKeyId(idempotencyKeyEntity.getId());
     verify(paymentMapper).toRequestPaymentResponse(existingPayment);
     verify(paymentMapper, never()).toRequestPaymentResponse(dto, idempotencyKeyEntity);
   }
@@ -73,7 +74,7 @@ class ProcessPaymentServiceExistingPaymentTest {
     IdempotencyKeyEntity idempotencyKeyEntity = createValidIdempotencyKeyEntity();
     RequestPaymentResponse expectedResponse = createValidRequestPaymentResponse();
 
-    when(paymentRepository.findByIdempotencyKey_Id(idempotencyKeyEntity.getId()))
+    when(paymentRepository.findByIdempotencyKeyId(idempotencyKeyEntity.getId()))
         .thenReturn(Optional.empty());
     when(paymentMapper.toRequestPaymentResponse(dto, idempotencyKeyEntity))
         .thenReturn(expectedResponse);
@@ -83,7 +84,7 @@ class ProcessPaymentServiceExistingPaymentTest {
 
     assertNotNull(response);
     assertEquals(expectedResponse, response);
-    verify(paymentRepository).findByIdempotencyKey_Id(idempotencyKeyEntity.getId());
+    verify(paymentRepository).findByIdempotencyKeyId(idempotencyKeyEntity.getId());
     verify(paymentMapper).toRequestPaymentResponse(dto, idempotencyKeyEntity);
     verify(paymentMapper, never()).toRequestPaymentResponse(any(PaymentEntity.class));
   }
@@ -94,7 +95,7 @@ class ProcessPaymentServiceExistingPaymentTest {
     RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
     IdempotencyKeyEntity idempotencyKeyEntity = createValidIdempotencyKeyEntity();
 
-    when(paymentRepository.findByIdempotencyKey_Id(idempotencyKeyEntity.getId()))
+    when(paymentRepository.findByIdempotencyKeyId(idempotencyKeyEntity.getId()))
         .thenThrow(new RuntimeException("Database error"));
 
     RuntimeException exception =
@@ -103,7 +104,7 @@ class ProcessPaymentServiceExistingPaymentTest {
             () -> processPaymentService.processExistingPayment(dto, idempotencyKeyEntity));
 
     assertEquals("Database error", exception.getMessage());
-    verify(paymentRepository).findByIdempotencyKey_Id(idempotencyKeyEntity.getId());
+    verify(paymentRepository).findByIdempotencyKeyId(idempotencyKeyEntity.getId());
     verify(paymentMapper, never()).toRequestPaymentResponse(any(PaymentEntity.class));
   }
 
@@ -114,7 +115,7 @@ class ProcessPaymentServiceExistingPaymentTest {
     IdempotencyKeyEntity idempotencyKeyEntity = createValidIdempotencyKeyEntity();
     PaymentEntity existingPayment = createValidPaymentEntity();
 
-    when(paymentRepository.findByIdempotencyKey_Id(idempotencyKeyEntity.getId()))
+    when(paymentRepository.findByIdempotencyKeyId(idempotencyKeyEntity.getId()))
         .thenReturn(Optional.of(existingPayment));
     when(paymentMapper.toRequestPaymentResponse(existingPayment))
         .thenThrow(new RuntimeException("Mapping error"));
@@ -134,7 +135,7 @@ class ProcessPaymentServiceExistingPaymentTest {
     RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
     IdempotencyKeyEntity idempotencyKeyEntity = createValidIdempotencyKeyEntity();
 
-    when(paymentRepository.findByIdempotencyKey_Id(idempotencyKeyEntity.getId()))
+    when(paymentRepository.findByIdempotencyKeyId(idempotencyKeyEntity.getId()))
         .thenReturn(Optional.empty());
     when(paymentMapper.toRequestPaymentResponse(dto, idempotencyKeyEntity))
         .thenThrow(new RuntimeException("DTO mapping error"));
@@ -157,16 +158,57 @@ class ProcessPaymentServiceExistingPaymentTest {
         NullPointerException.class, () -> processPaymentService.processExistingPayment(dto, null));
   }
 
+  @DisplayName("processExistingPayment - Hash mismatch throws ConflictException")
+  @Test
+  void testProcessExistingPaymentHashMismatch() {
+    RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
+    IdempotencyKeyEntity idempotencyKeyEntity = createValidIdempotencyKeyEntity();
+    idempotencyKeyEntity.setRequestHash("different-hash");
+
+    ConflictException exception =
+        assertThrows(
+            ConflictException.class,
+            () -> processPaymentService.processExistingPayment(dto, idempotencyKeyEntity));
+
+    assertNotNull(exception.getMessage());
+    verify(paymentRepository, never()).findByIdempotencyKeyId(any());
+    verify(paymentMapper, never()).toRequestPaymentResponse(any(PaymentEntity.class));
+    verify(paymentMapper, never()).toRequestPaymentResponse(any(), any());
+  }
+
+  @DisplayName("processExistingPayment - Hash matches, continues processing")
+  @Test
+  void testProcessExistingPaymentHashMatches() {
+    RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
+    IdempotencyKeyEntity idempotencyKeyEntity = createValidIdempotencyKeyEntity();
+    PaymentEntity existingPayment = createValidPaymentEntity();
+    existingPayment.setId(1L);
+    RequestPaymentResponse expectedResponse = createValidRequestPaymentResponse();
+
+    when(paymentRepository.findByIdempotencyKeyId(idempotencyKeyEntity.getId()))
+        .thenReturn(Optional.of(existingPayment));
+    when(paymentMapper.toRequestPaymentResponse(existingPayment)).thenReturn(expectedResponse);
+
+    RequestPaymentResponse response =
+        processPaymentService.processExistingPayment(dto, idempotencyKeyEntity);
+
+    assertNotNull(response);
+    assertEquals(expectedResponse, response);
+    verify(paymentRepository).findByIdempotencyKeyId(idempotencyKeyEntity.getId());
+    verify(paymentMapper).toRequestPaymentResponse(existingPayment);
+  }
+
   private RequestPaymentRequestDTO createValidRequestPaymentDTO() {
     return new RequestPaymentRequestDTO(
         1000L, "USD", "ORDER123", "IDEMPOTENT-KEY-123", new HashMap<>());
   }
 
   private IdempotencyKeyEntity createValidIdempotencyKeyEntity() {
+    RequestPaymentRequestDTO dto = createValidRequestPaymentDTO();
     IdempotencyKeyEntity entity = new IdempotencyKeyEntity();
     entity.setId(1L);
     entity.setValue("IDEMPOTENT-KEY-123");
-    entity.setRequestHash("somehash");
+    entity.setRequestHash(String.valueOf(dto.hashCode()));
     entity.setCreatedAt(LocalDateTime.now());
     return entity;
   }

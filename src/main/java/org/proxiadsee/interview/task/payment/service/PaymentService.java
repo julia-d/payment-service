@@ -8,6 +8,7 @@ import org.proxiadsee.interview.task.payment.domain.dto.GetPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.entity.IdempotencyKeyEntity;
 import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.exception.ConflictException;
 import org.proxiadsee.interview.task.payment.exception.ServiceException;
 import org.proxiadsee.interview.task.payment.mapper.PaymentMapper;
 import org.proxiadsee.interview.task.payment.storage.IdempotencyKeyRepository;
@@ -57,7 +58,9 @@ public class PaymentService extends PaymentServiceImplBase {
       } else {
         response = processNewPayment(dto);
       }
-    } catch (RuntimeException e) {
+    } catch (ConflictException | ServiceException e) {
+      throw e;
+    } catch (Exception e) {
       log.error("Error processing payment for idempotency key: {}", dto.idempotencyKey(), e);
       throw new ServiceException("Failed to process payment", e);
     }

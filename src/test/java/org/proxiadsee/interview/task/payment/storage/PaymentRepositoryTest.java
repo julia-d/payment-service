@@ -51,7 +51,7 @@ class PaymentRepositoryTest {
     assertEquals(savedPayment.getId(), foundById.get().getId());
 
     Optional<PaymentEntity> foundByIdempotency =
-        paymentRepository.findByIdempotencyKey_Id(savedKey.getId());
+        paymentRepository.findByIdempotencyKeyId(savedKey.getId());
     assertTrue(foundByIdempotency.isPresent());
     assertEquals(savedPayment.getId(), foundByIdempotency.get().getId());
   }

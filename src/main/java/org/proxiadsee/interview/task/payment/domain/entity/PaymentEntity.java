@@ -30,7 +30,7 @@ public class PaymentEntity {
   @JoinColumn(name = "idempotency_id", nullable = false, unique = true)
   private IdempotencyKeyEntity idempotencyKey;
 
-  @Column(name = "gateway_payment_id", nullable = false, unique = true)
+  @Column(name = "gateway_payment_id", unique = true)
   private String gatewayPaymentId;
 
   @Column(name = "amount_minor", nullable = false)

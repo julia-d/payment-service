@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS idempotency_key (
 CREATE TABLE IF NOT EXISTS payment (
                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
                                        idempotency_id INTEGER NOT NULL UNIQUE,
-                                       gateway_payment_id TEXT NOT NULL UNIQUE,
+                                       gateway_payment_id TEXT UNIQUE,
                                        amount_minor INTEGER NOT NULL,
                                        currency TEXT NOT NULL,
                                        status TEXT NOT NULL,

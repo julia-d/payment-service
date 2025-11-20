@@ -7,5 +7,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<PaymentEntity, Long> {
-  Optional<PaymentEntity> findByIdempotencyKey_Id(Long idempotencyKeyId);
+  Optional<PaymentEntity> findByIdempotencyKeyId(Long idempotencyKeyId);
 }

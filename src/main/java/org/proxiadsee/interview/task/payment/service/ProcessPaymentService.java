@@ -7,6 +7,7 @@ import org.proxiadsee.interview.task.payment.domain.dto.GatewayPaymentDTO;
 import org.proxiadsee.interview.task.payment.domain.dto.RequestPaymentRequestDTO;
 import org.proxiadsee.interview.task.payment.domain.entity.IdempotencyKeyEntity;
 import org.proxiadsee.interview.task.payment.domain.entity.PaymentEntity;
+import org.proxiadsee.interview.task.payment.exception.ConflictException;
 import org.proxiadsee.interview.task.payment.mapper.PaymentMapper;
 import org.proxiadsee.interview.task.payment.storage.PaymentRepository;
 import org.springframework.stereotype.Service;
@@ -52,14 +53,45 @@ public class ProcessPaymentService {
       RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity) {
     log.info(
         "Processing existing payment for idempotency key: {}", idempotencyKeyEntity.getValue());
+    log.debug("Idempotency key ID: {}", idempotencyKeyEntity.getId());
+
+    validateRequestHash(dto, idempotencyKeyEntity);
 
     Optional<PaymentEntity> paymentOpt =
-        paymentRepository.findByIdempotencyKey_Id(idempotencyKeyEntity.getId());
+        paymentRepository.findByIdempotencyKeyId(idempotencyKeyEntity.getId());
+
+    log.debug("Payment entity found: {}", paymentOpt.isPresent());
 
     if (paymentOpt.isPresent()) {
-      return paymentMapper.toRequestPaymentResponse(paymentOpt.get());
+      PaymentEntity entity = paymentOpt.get();
+      log.info(
+          "Found existing payment: id={}, status={}, gatewayId={}",
+          entity.getId(),
+          entity.getStatus(),
+          entity.getGatewayPaymentId());
+      return paymentMapper.toRequestPaymentResponse(entity);
     } else {
+      log.warn(
+          "No payment found for idempotency key ID: {}, returning default response",
+          idempotencyKeyEntity.getId());
       return paymentMapper.toRequestPaymentResponse(dto, idempotencyKeyEntity);
+    }
+  }
+
+  private void validateRequestHash(
+      RequestPaymentRequestDTO dto, IdempotencyKeyEntity idempotencyKeyEntity) {
+    String currentHash = String.valueOf(dto.hashCode());
+    String storedHash = idempotencyKeyEntity.getRequestHash();
+
+    if (!currentHash.equals(storedHash)) {
+      log.error(
+          "Hash mismatch for idempotency key {}: current={}, stored={}",
+          idempotencyKeyEntity.getValue(),
+          currentHash,
+          storedHash);
+      throw new ConflictException(
+          "Request hash does not match stored hash for idempotency key: "
+              + idempotencyKeyEntity.getValue());
     }
   }
 }

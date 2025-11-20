@@ -145,7 +145,6 @@ class PaymentClientFlowIntegrationTest {
             () -> stub.requestPayment(conflictingRequest),
             "Expected conflict on changed payload with same idempotency key");
 
-    assertThat(exception.getStatus().getCode())
-        .isEqualTo(Status.Code.INVALID_ARGUMENT);
+    assertThat(exception.getStatus().getCode()).isEqualTo(Status.Code.INVALID_ARGUMENT);
   }
 }

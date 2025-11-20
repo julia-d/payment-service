@@ -35,4 +35,6 @@ build/
 ### Environment Files ###
 env.properties
 **/env.properties
+*.db
+
 

@@ -29,31 +29,22 @@ public class GrpcExceptionAdvice implements ServerInterceptor {
           super.onHalfClose();
         } catch (ConflictException ex) {
           log.warn("Conflict exception: {}", ex.getMessage());
-          call.close(
-              Status.INVALID_ARGUMENT.withDescription(ex.getMessage()).withCause(ex),
-              new Metadata());
+          call.close(Status.INVALID_ARGUMENT.withDescription(ex.getMessage()), new Metadata());
         } catch (ValidationException ex) {
           log.warn("Validation failed: {}", ex.getMessage());
-          call.close(
-              Status.INVALID_ARGUMENT.withDescription(ex.getMessage()).withCause(ex),
-              new Metadata());
+          call.close(Status.INVALID_ARGUMENT.withDescription(ex.getMessage()), new Metadata());
         } catch (ConstraintViolationException ex) {
           log.warn("Constraint violations: {}", ex.getMessage());
-          call.close(
-              Status.INVALID_ARGUMENT.withDescription(ex.getMessage()).withCause(ex),
-              new Metadata());
+          call.close(Status.INVALID_ARGUMENT.withDescription(ex.getMessage()), new Metadata());
         } catch (ServiceException ex) {
           log.error("Service error: {}", ex.getMessage(), ex);
-          call.close(
-              Status.INTERNAL.withDescription(ex.getMessage()).withCause(ex), new Metadata());
+          call.close(Status.INTERNAL.withDescription("Internal server error"), new Metadata());
         } catch (StatusRuntimeException ex) {
           log.debug("StatusRuntimeException thrown: {}", ex.getMessage());
           call.close(ex.getStatus(), new Metadata());
         } catch (Throwable ex) {
           log.error("Unexpected error in gRPC call", ex);
-          call.close(
-              Status.INTERNAL.withDescription("Internal server error").withCause(ex),
-              new Metadata());
+          call.close(Status.INTERNAL.withDescription("Internal server error"), new Metadata());
         }
       }
 
@@ -64,8 +55,7 @@ public class GrpcExceptionAdvice implements ServerInterceptor {
         } catch (Throwable ex) {
           log.error("Error while processing message", ex);
           call.close(
-              Status.INTERNAL.withDescription("Error while processing message").withCause(ex),
-              new Metadata());
+              Status.INTERNAL.withDescription("Error while processing message"), new Metadata());
         }
       }
 

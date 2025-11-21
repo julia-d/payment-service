@@ -18,12 +18,15 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
-COPY --from=builder --chown=appuser:appuser /app/target/payment-service-*.jar payment-service.jar
+COPY --from=builder /app/target/payment-service-*.jar payment-service.jar
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+RUN chown -R appuser:appuser /app && \
+    chmod -R 775 /app
 
 USER appuser
 

@@ -14,7 +14,7 @@ import org.proxiadsee.interview.task.payment.mapper.PaymentMapper;
 import org.proxiadsee.interview.task.payment.storage.IdempotencyKeyRepository;
 import org.proxiadsee.interview.task.payment.storage.PaymentRepository;
 import org.proxiadsee.interview.task.payment.validation.DtoValidator;
-import org.springframework.stereotype.Component;
+import org.springframework.grpc.server.service.GrpcService;
 import payments.v1.Payment.GetPaymentRequest;
 import payments.v1.Payment.GetPaymentResponse;
 import payments.v1.Payment.HealthRequest;
@@ -24,7 +24,7 @@ import payments.v1.Payment.RequestPaymentResponse;
 import payments.v1.PaymentServiceGrpc.PaymentServiceImplBase;
 
 @Slf4j
-@Component
+@GrpcService
 @RequiredArgsConstructor
 public class PaymentService extends PaymentServiceImplBase {
   private static final HealthResponse OK_HEALTH_RESPONSE =

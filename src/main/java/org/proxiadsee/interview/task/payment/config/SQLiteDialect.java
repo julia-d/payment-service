@@ -3,19 +3,26 @@ package org.proxiadsee.interview.task.payment.config;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.identity.IdentityColumnSupportImpl;
+import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 
 public class SQLiteDialect extends Dialect {
 
-  public SQLiteDialect() {
-    super();
+  public SQLiteDialect(DialectResolutionInfo info) {
+    super(info);
   }
 
+  @Override
   public IdentityColumnSupport getIdentityColumnSupport() {
     return new SQLiteIdentityColumnSupport();
   }
 
-  public boolean supportsJdbcGeneratedKeys() {
-    // SQLite JDBC driver does not implement getGeneratedKeys reliably
+  @Override
+  public boolean supportsInsertReturning() {
+    return false;
+  }
+
+  @Override
+  public boolean supportsValuesList() {
     return false;
   }
 
@@ -32,8 +39,12 @@ public class SQLiteDialect extends Dialect {
 
     @Override
     public String getIdentityColumnString(int type) {
-      // Use INTEGER for AUTOINCREMENT primary keys in SQLite
       return "integer";
+    }
+
+    @Override
+    public boolean hasDataTypeInIdentityColumn() {
+      return false;
     }
   }
 }

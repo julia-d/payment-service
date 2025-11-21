@@ -13,14 +13,14 @@
 
 ---
 
-## 2. Experience level and learning goals
+## 2. Experience level
 
 - At the start of this project, I was new to payment services as a domain.
-- I was also new to gRPC in practice:
-  - Learned how to define `.proto` files
-  - Learned how to wire Spring Boot with gRPC
-  - Learned how to test gRPC flows from a client point of view
-  - Learned how to set up actuator metrics for a gRPC server; before this project I only used actuator with a Spring Boot web application
+- I was also new to gRPC in practice and had to investigate first:
+  -  how to define `.proto` files
+  -  how to wire Spring Boot with gRPC
+  -  how to test gRPC flows from a client point of view
+  -  how to set up actuator metrics for a gRPC server; before this project I only used actuator with a Spring Boot web application
 - I did not have practical experience implementing GitHub CI pipelines by myself.
   - I had previous experience working on a project that already used GitHub CI
   - I made changes to existing pipelines, but did not design them from scratch before this project

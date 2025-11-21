@@ -49,6 +49,7 @@ public class ProcessPaymentService {
           gatewayResponse.status().name(),
           gatewayResponse.id());
     } catch (Exception e) {
+      // not scheduling a retry mechanism here, but in a real-world scenario, we could use
       log.warn(
           "Failed to update payment entity after gateway response, paymentId={}, orderId={}, scheduling retry after transaction commit",
           savedEntity.getId(),

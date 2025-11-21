@@ -159,14 +159,13 @@ jobs:
       - name: Build Docker image
         run: docker build -t payment-service:${{ github.sha }} .
 
-      - name: Run container and verify actuator health
+      - name: Run container and verify health
         shell: bash
         run: |
           set -euo pipefail
 
           CONTAINER_NAME=payment-service-ci
           IMAGE=payment-service:${{ github.sha }}
-          ACTUATOR_URL="http://localhost:8081/actuator/health"
 
           echo "Starting container $CONTAINER_NAME from image $IMAGE"
           docker run -d \
@@ -175,51 +174,34 @@ jobs:
             -p 9090:9090 \
             "$IMAGE"
 
-          echo "Waiting 10 seconds for initial startup..."
-          sleep 10
-          
-          echo "=== Container logs (first 10 seconds) ==="
-          docker logs "$CONTAINER_NAME" 2>&1 | tail -50
-          echo "=== End of initial logs ==="
+          echo "Waiting for Docker health check (up to 60 seconds)..."
+          SECONDS=0
+          MAX_WAIT=60
 
-          echo "Waiting additional 50 seconds before health polling"
-          sleep 50
+          while [ $SECONDS -lt $MAX_WAIT ]; do
+            HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "none")
+            echo "Health status at ${SECONDS}s: $HEALTH_STATUS"
 
-          echo "Starting actuator health polling for up to 60 seconds"
-          START_TIME=$(date +%s)
-          HEALTH_OK=0
-
-          while true; do
-            NOW=$(date +%s)
-            ELAPSED=$((NOW - START_TIME))
-            if [ "$ELAPSED" -ge 60 ]; then
-              echo "Actuator health endpoint did not become healthy within 60 seconds of polling"
-              break
+            if [ "$HEALTH_STATUS" = "healthy" ]; then
+              echo "✓ Container is healthy"
+              docker logs "$CONTAINER_NAME" 2>&1 | tail -20
+              docker rm -f "$CONTAINER_NAME"
+              echo "Container stopped and removed successfully"
+              exit 0
             fi
 
-            echo "Requesting actuator health at $ACTUATOR_URL (elapsed ${ELAPSED}s)"
-            HTTP_CODE=$(curl -s -o /tmp/health_body -w "%{http_code}" "$ACTUATOR_URL" || echo "000")
-            echo "HTTP status code: $HTTP_CODE"
-            echo "Response body:"
-            cat /tmp/health_body || true
-
-            if [ "$HTTP_CODE" = "200" ] && grep -q '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/health_body; then
-              echo "Actuator health is UP"
-              HEALTH_OK=1
-              break
+            if [ "$HEALTH_STATUS" = "unhealthy" ] || ! docker ps -q -f name="^${CONTAINER_NAME}$" | grep -q .; then
+              echo "ERROR: Container is unhealthy or stopped"
+              docker logs "$CONTAINER_NAME" 2>&1 || true
+              docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+              exit 1
             fi
 
-            echo "Actuator health not UP yet, waiting 5 seconds before next retry"
-            sleep 5
+            sleep 3
+            SECONDS=$((SECONDS + 3))
           done
 
-          echo "Stopping and removing container $CONTAINER_NAME"
-          docker logs "$CONTAINER_NAME" || true
-          docker rm -f "$CONTAINER_NAME" || true
-
-          if [ "$HEALTH_OK" -ne 1 ]; then
-            echo "ERROR: Actuator health check failed. See logs above for details."
-            exit 1
-          fi
-
-          echo "Actuator health check succeeded. Build stage completed successfully."
+          echo "ERROR: Container did not become healthy within ${MAX_WAIT} seconds"
+          docker logs "$CONTAINER_NAME" 2>&1 || true
+          docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+          exit 1

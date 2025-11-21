@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Run Checkstyle
+        run: mvn checkstyle:check
+      
+      - name: Run SpotBugs
+        run: mvn spotbugs:check
+      
+      - name: Run Spotless (format check)
+        run: mvn spotless:check
+
+  test:
+    name: Test with Coverage Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Run tests with coverage
+        run: mvn clean test jacoco:report
+      
+      - name: Check coverage gate (80%)
+        run: mvn jacoco:check
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./target/site/jacoco/jacoco.xml
+
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Create env.properties from secrets
+        run: |
+          echo "Creating env.properties file from repository secrets..."
+          cat > src/main/resources/env.properties << EOF
+          db.url=${{ secrets.DB_URL || 'jdbc:sqlite:file::memory:?cache=shared' }}
+          db.username=${{ secrets.DB_USERNAME || 'sa' }}
+          db.password=${{ secrets.DB_PASSWORD || '' }}
+          stripe.api.key=${{ secrets.STRIPE_API_KEY || 'sk_test_placeholder' }}
+          stripe.webhook.secret=${{ secrets.STRIPE_WEBHOOK_SECRET || 'whsec_placeholder' }}
+          EOF
+          echo "env.properties file created successfully"
+          
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+      
+      - name: Build Docker image
+        run: docker build -t payment-service:latest .
+      
+      - name: Run container and verify actuator health
+        run: |
+          CONTAINER_NAME="payment-service-ci"
+          IMAGE="payment-service:latest"
+          
+          echo "Starting Docker container..."
+          docker run -d --name "$CONTAINER_NAME" \
+            -p 8080:8080 \
+            "$IMAGE"
+          
+          echo "Waiting for application to be ready..."
+          MAX_WAIT=60
+          WAIT_INTERVAL=5
+          elapsed=0
+          
+          while [ $elapsed -lt $MAX_WAIT ]; do
+            sleep $WAIT_INTERVAL
+            elapsed=$((elapsed + WAIT_INTERVAL))
+            
+            echo "Requesting actuator health at http://localhost:8080/actuator/health (elapsed ${elapsed}s)"
+            
+            HTTP_CODE=$(curl -s -o /tmp/health_body -w "%{http_code}" http://localhost:8080/actuator/health || echo "000000")
+            
+            echo "HTTP status code: $HTTP_CODE"
+            echo "Response body:"
+            cat /tmp/health_body || true
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              STATUS=$(cat /tmp/health_body | grep -o '"status":"[^"]*"' | cut -d'"' -f4 || echo "")
+              echo "Health status: $STATUS"
+              
+              if [ "$STATUS" = "UP" ]; then
+                echo "✅ Actuator health endpoint is UP!"
+                docker stop "$CONTAINER_NAME"
+                docker rm "$CONTAINER_NAME"
+                exit 0
+              fi
+            fi
+            
+            echo "Actuator health not UP yet, waiting $WAIT_INTERVAL seconds before next retry"
+          done
+          
+          echo "Actuator health endpoint did not become healthy within $MAX_WAIT seconds of polling"
+          echo "Stopping and removing container $CONTAINER_NAME"
+          docker logs "$CONTAINER_NAME"
+          docker stop "$CONTAINER_NAME"
+          docker rm "$CONTAINER_NAME"
+          echo "ERROR: Actuator health check failed. See logs above for details."
+          exit 1

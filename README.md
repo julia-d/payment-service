@@ -231,7 +231,7 @@ start target/site/jacoco/index.html
 
 ### Coverage Gate
 
-The project requires **10% minimum coverage**. Build fails if coverage is below threshold.
+The project requires **80% minimum coverage**. Build fails if coverage is below threshold.
 
 ```bash
 ./mvnw clean test jacoco:report jacoco:check
@@ -807,6 +807,3 @@ See: **[ARCHITECTURE.md](ARCHITECTURE.md)**
 For issues, questions, or contributions, please open an issue on GitHub.
 
 ---
-
-**Built with ❤️ using Spring Boot and gRPC **
-

@@ -9,10 +9,11 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class PaymentGatewayService {
+    private static int counter = 0;
 
-  public GatewayPaymentDTO processPayment(RequestPaymentRequestDTO dto) {
-    log.info("processPayment: {}", dto);
-    return new GatewayPaymentDTO(
-        "STUB-GATEWAY-ID", PaymentStatusDTO.PAYMENT_STATUS_SUCCEEDED, "stub");
-  }
+    public GatewayPaymentDTO processPayment(RequestPaymentRequestDTO dto) {
+        log.info("processPayment: {}", dto);
+        return new GatewayPaymentDTO(
+                "STUB-GATEWAY-ID" + counter++, PaymentStatusDTO.PAYMENT_STATUS_SUCCEEDED, "stub");
+    }
 }

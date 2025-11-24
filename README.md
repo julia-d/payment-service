@@ -22,7 +22,7 @@ A gRPC-based payment service built with Spring Boot, providing secure and reliab
 
 ## Overview
 
-The Payment Service is a production-ready gRPC service that handles payment processing with the following features:
+The Payment Service a gRPC service that handles payment processing with the following features:
 
 - ✅ **Idempotency** - Prevents duplicate payments with idempotency keys
 - ✅ **Graceful Shutdown** - Zero-downtime deployments
